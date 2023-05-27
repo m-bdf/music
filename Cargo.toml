@@ -1,0 +1,13 @@
+[package]
+name = "music"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+glicol = "0"
+glicol_parser = "0"
+glicol_synth = "0"
+hound = "3"
+num = "0"
+clap = { version = "4", features = ["derive"] }
+dasp_sample = "0"
