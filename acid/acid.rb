@@ -1,6 +1,8 @@
 use_debug false
 use_bpm 150
 
+run_file "~/Documents/music/lib/lib.rb"
+
 kick = load_sample :bd_tek
 hat = load_sample :hat_noiz
 
@@ -8,11 +10,7 @@ hat = load_sample :hat_noiz
 ### PATTERNS
 
 
-define :acid do |v|
-  define :slide do |from, to|
-    return (line from, to, steps: 5, inclusive: true).ramp
-  end
-  
+define :acid do |v|  
   define :play_pick do |note|
     play note, release: 0.25
     sleep 0.5
@@ -103,24 +101,12 @@ end
 ### SONG
 
 
-_ = nil
-
 song = {
-  acid: [0,0,0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0],
-  pad:  [0,0,0,0,0,_, _,_,_,_, _,_,_,_, _,_,_,_, _,_],
-  bass: [_,_,_,_,_,_, 0,0,0,0, 0,0,0,0, 0,0,0,0, _,_],
-  kick: [_,_,_,_,_,_, _,_,_,_, 0,0,0,_, 0,0,0,_, _,_],
-  hat:  [_,_,_,_,_,_, _,_,0,0, _,_,0,_, 0,0,0,_, _,_],
+  acid: [0,0,0,0,0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0],
+  pad:  [0,0,0,0,0,_,_,_, _,_,_,_, _,_,_,_, _,_],
+  bass: [_,_,_,_,_,_,0,0, 0,0,0,0, 0,0,0,0, _,_],
+  kick: [_,_,_,_,_,_,_,_, 0,0,0,_, 0,0,0,_, _,_],
+  hat:  [_,_,_,_,_,_,_,0, _,_,0,_, 0,0,0,_, _,_],
 }
 
-song.each do |pattern, playlist|
-  in_thread do
-    playlist.each do |v|
-      if v
-        send pattern, v
-      else
-        sleep 8
-      end
-    end
-  end
-end
+arrange song

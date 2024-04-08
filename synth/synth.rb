@@ -1,23 +1,16 @@
 use_debug false
 use_bpm 150
 
+run_file "~/Documents/music/lib/lib.rb"
+
 kick = load_sample :bd_tek
 
 
 ### PATTERNS
 
 
-define :play_lead do |&fn|
-  [:winwood_lead, :supersaw].each do |s|
-    in_thread do
-      use_synth s
-      fn.call
-    end
-  end
-end
-
 define :lead do |v|
-  with_fx :slicer, mix: v > 1, amp: 0.5 do
+  with_fx :hpf, cutoff: 60, amp: 0.5 do
     n = [
       [:A3,:G4,:G4,:G4,:G4,:E4,:F4,:E4,:E4,:E4,:E4,:C4],
       [:A3,:C4,:C4,:C4,:C4,:A3,:B3,:F4,:F4,:F4,:E4,:C4],
@@ -25,11 +18,9 @@ define :lead do |v|
     
     t = [1,0.4,0.3,0.3,1,1,1,0.4,0.3,0.3,1,1]
     
-    play_lead do
+    synths [:winwood_lead, :supersaw] do
       play_pattern_timed n, t, sustain: 0.5
     end
-    
-    sleep 8
   end
 end
 
@@ -40,14 +31,14 @@ define :bass do |v|
     
     8.times do
       n = [
-        [:A1,:G1,:G1,:E1,:F1,:E1,:E1,:C1],
-        [:A1,:C1,:C1,:A1,:B1,:F1,:F1,:C1],
+        [:A1,:G1,:G1,:G1,:F1,:E1,:E1,:E1],
+        [:A1,:C2,:C2,:C2,:B1,:F1,:F1,:F1],
       ][v].tick
       
       play n
-      sleep 0.75
-      play n, amp: 0.5
-      sleep 0.25
+      sleep 0.7
+      play n, amp: 0.7
+      sleep 0.3
     end
   end
 end
@@ -60,9 +51,9 @@ define :kick do |v|
     
     sample kick
     sleep 0.4
-    sample kick, amp: 0.5
+    sample kick, amp: 0.4
     sleep 0.3
-    sample kick, amp: 0.5
+    sample kick, amp: 0.7
     sleep 0.3
   end
   
@@ -70,7 +61,7 @@ define :kick do |v|
     if v == 0
       play_kick
       sleep 7
-    elsif v == 1
+    else
       8.times do
         play_kick
       end
@@ -82,33 +73,10 @@ end
 ### SONG
 
 
-play_lead do
-  play :E4, slide: 0.5, sustain: 4
-  (line :D4,:G3).each do |n|
-    control note: n
-    sleep 0.5
-  end
-end
-
-sleep 4
-
-
-_ = nil
-
 song = {
-  lead: [1,0,0,0,1,0,0,2,3,0,0,0,1],
+  lead: [1,0,0,0,1,0,0,0,1,0,0,0,1],
   bass: [_,0,0,0,1,0,0,0,1,0,0,0,1],
   kick: [0,1,1,1,0,1,1,1,0,1,1,1,0],
 }
 
-song.each do |pattern, playlist|
-  in_thread do
-    playlist.each do |v|
-      if v
-        send pattern, v
-      else
-        sleep 8
-      end
-    end
-  end
-end
+arrange song
