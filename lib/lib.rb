@@ -1,5 +1,5 @@
 define :slide do |from, to|
-  return (line from, to, steps: 5, inclusive: true).ramp
+  return line from, to, steps: 5, inclusive: true
 end
 
 define :synths do |lead, *synths, &fn|
@@ -14,10 +14,12 @@ define :synths do |lead, *synths, &fn|
   fn.call
 end
 
-define :arrange do |song|
-  song.each do |pattern, playlist|
+define :arrange do |song, skip: 0|
+  {}.merge(*song) do |_, p1, p2|
+    p1 + p2
+  end.each do |pattern, playlist|
     in_thread do
-      playlist.each do |v|
+      playlist.drop(skip).each do |v|
         if v
           send pattern, v
         else
