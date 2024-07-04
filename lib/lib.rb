@@ -1,5 +1,5 @@
 define :slide do |from, to|
-  return line from, to, steps: 5, inclusive: true
+  line from, to, steps: 5, inclusive: true
 end
 
 define :synths do |lead, *synths, &fn|
@@ -34,6 +34,4 @@ define :arrange do |song, skip: 0|
   end
 end
 
-define :_ do
-  return nil
-end
+define :_ do nil end
