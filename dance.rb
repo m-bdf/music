@@ -51,8 +51,8 @@ end
 
 define :kick do |v|
   with_fx :compressor do
-    with_fx :rhpf, cutoff: 30 do
-      with_fx :wobble, cutoff_max: 80 do
+    with_fx :rlpf, cutoff: 90 do
+      with_fx :rhpf, cutoff: (v + 1) * 30 do
         with_fx :gverb, damp: 1 do
           8.times do
             play_click
@@ -66,21 +66,23 @@ define :kick do |v|
 end
 
 define :hats do |v|
-  with_fx :slicer, amp: 2 do
+  with_fx :slicer, amp: 1.5 do
     with_fx :gverb, damp: 1 do
-      with_fx :distortion do
-        8.times do
-          with_fx :rhpf, amp: 0.15 do
-            sleep 0.5
-            play_click
-            sleep 0.25
-            play_click if tick % 16 == 15
-            sleep 0.25
-          end
+      with_fx :reverb, room: 0 do
+        with_fx :distortion do
+          8.times do
+            with_fx :rhpf, amp: 0.15 do
+              sleep 0.5
+              play_click
+              sleep 0.25
+              play_click if tick % 16 == 15
+              sleep 0.25
+            end
 
-          with_fx :rlpf, cutoff: 120 do
-            play_click if look % 2 == 0
-          end if v > 0
+            with_fx :rlpf, cutoff: 120 do
+              play_click if look % 2 == 0
+            end if v > 0
+          end
         end
       end
     end
@@ -88,7 +90,28 @@ define :hats do |v|
 end
 
 
-### LEAD
+### PADS
+
+define :pads do |v|
+  with_fx :slicer, amp: 0.25 do |slicer|
+    with_fx :rlpf, cutoff: 0 do |lpf|
+      with_fx :panslicer, phase: 0.125, mix: 0.25 do
+        play [:A3,:A4,:A2].take(v + 1), wave: 2, sustain: 7
+        control lpf, cutoff: 110, cutoff_slide: v * 4
+
+        2.times do
+          control slicer, phase: 0.125
+          sleep 1
+          control slicer, phase: 0.25
+          sleep 3
+        end
+      end
+    end
+  end
+end
+
+
+### VOICE
 
 define :word do |v|
   with_fx :compressor, amp: 0.5 do |level|
@@ -139,20 +162,23 @@ end
 arrange [
   {
     bass: [_, 0,0,0,1, 1,1,1,_, 1,1,1,0, 1,1,1,2],
-    kick: [_, 0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,_],
+    kick: [_, 0,0,0,0, 0,0,0,1, 0,0,0,0, 0,0,0,_],
     hats: [_, _,_,0,0, 1,1,1,_, 1,1,1,1, 1,1,0,_],
+    pads: [_, _,_,_,_, _,_,_,2, 0,1,0,1, 0,1,0,_],
     word: [1, _,_,_,_, _,_,_,0, 1,0,1,0, 1,0,1,0],
   },
   {
     bass: [1,1,1,0, 1,1,1,_, 1,1,1,0, 1,1,1,2],
-    kick: [0,0,0,0, 0,0,0,0, 0,0,0,0, 0,0,0,_],
+    kick: [0,0,0,0, 0,0,0,1, 0,0,0,0, 0,0,0,_],
     hats: [1,1,1,0, 1,1,1,_, 1,1,1,1, 1,1,0,_],
+    pads: [_,_,_,_, _,_,_,2, 0,1,0,1, 0,1,0,_],
     word: [_,_,_,_, _,_,_,0, 1,0,1,0, 1,0,1,0],
   },
   {
     bass: [0,0,0,1, 0,0,0,2, 1,1,1,1, 1,1,1,2, 0,2],
-    kick: [0,0,0,0, 0,0,0,_, 0,0,0,0, 0,0,0,0, _,_],
+    kick: [0,0,0,0, 0,0,0,_, 0,0,0,0, 0,0,0,1, _,_],
     hats: [1,1,1,1, 1,1,0,_, 1,1,1,0, 1,1,1,_, 0,_],
+    pads: [0,1,0,1, 0,1,0,_, _,_,_,_, _,_,_,_, _,_],
     word: [2,2,2,0, 2,2,2,0, _,_,_,_, _,_,_,_, _,_],
   },
 ]
