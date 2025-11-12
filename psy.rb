@@ -30,11 +30,13 @@ define :kick do |v|
 end
 
 define :hats do |v|
-  8.times do
-    sleep 0.5
-    sample :hat_yosh, amp: 0.1 if v % 2 == 0
-    sample :hat_star, amp: 0.1 if v > 0
-    sleep 0.5
+  with_fx :level, amp: 0.1 do
+    8.times do
+      sleep 0.5
+      sample :hat_yosh if v % 2 == 0
+      sample :hat_star if v > 0
+      sleep 0.5
+    end
   end
 end
 
@@ -82,7 +84,7 @@ define :bass do |v|
       control distort: 0
     end
 
-    with_fx :rhpf do
+    with_fx :rhpf, res: 0 do
       time_warp accents do
         4.times do
           sleep 0.1
@@ -95,7 +97,7 @@ define :bass do |v|
           sleep 0.1
           control cutoff: :D2, cutoff_slide: 0.5
           sleep 0.5
-          control res: 0.5, res_slide: 0.1
+          control res: 0.5, res_slide: 0.1 if v == 0
           sleep 0.3
           control cutoff: 100, cutoff_slide: 0.1, res: 0
           sleep 0.1
@@ -105,6 +107,21 @@ define :bass do |v|
       melody
     end
   end
+end
+
+
+### PADS
+
+define :pads do |v|
+  synth :square, notes: [:A2,:D3,:F3], amp: 0.3,
+    attack: 4, sustain: 4, release: 0, env_curve: 7
+
+  control cutoff: 0, cutoff_slide: 0
+  control cutoff: 100, cutoff_slide: 4
+  sleep 4
+  control cutoff: 0, cutoff_slide: 0
+  control cutoff: 130, cutoff_slide: 4
+  sleep 4
 end
 
 
@@ -161,6 +178,7 @@ arrange [
     kick: [_, 1,1,0,0, 1,1,0,_, 0,0,1,1, 0,0,1,_],
     hats: [_, _,0,0,1, 0,0,1,1, 0,1,2,_, 2,1,0,_],
     bass: [_, _,_,0,0, 0,1,2,3, 2,3,2,3, 2,1,0,_],
+    pads: [0, _,_,_,_, _,_,_,_, _,_,_,_, _,_,_,_],
     word: [1, _,_,_,_, _,_,_,_, _,_,_,_, _,_,_,0],
   },
 ]
