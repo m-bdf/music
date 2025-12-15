@@ -1,19 +1,40 @@
 {
-  inputs.sonic-pi-tool = {
-    url = "github:Sohalt/sonic-pi-tool/fix-on-nix";
-    inputs.utils.follows = "flake-utils";
+  inputs = {
+    flake-utils.url = "github:numtide/flake-utils";
+
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+
+    sonic-pi-tool = {
+      url = "github:Sohalt/sonic-pi-tool";
+      inputs.utils.follows = "flake-utils";
+    };
   };
 
-  outputs = { self, flake-utils, nixpkgs, sonic-pi-tool }:
-    flake-utils.lib.eachDefaultSystem (system:
-    let
-      pkgs = nixpkgs.legacyPackages.${system};
-    in
+  outputs = inputs:
+    inputs.flake-utils.lib.eachDefaultSystem (system:
+      with inputs.nixpkgs.legacyPackages.${system};
     {
-      devShells.default = pkgs.mkShell {
+      packages.mondo = writeShellScriptBin "mondo" ''
+        LD_LIBRARY_PATH+=:"${alsa-lib}/lib"
+
+        [[ -f $1 && $2 =~ ^[0-9]*$ && $# -lt 3 ]] || {
+          echo 'usage: mondo <file> [<duration>]' >&2
+          exit 1
+        }
+
+        file=$(realpath "$1")
+        cd "$(mktemp -d --tmpdir mondo-XXXXXX)"
+        trap 'rm -rf $PWD' EXIT
+
+        cp ${./mondo.mjs} mondo.mjs
+        ${lib.getExe bun} install --analyze mondo.mjs --force
+        ${lib.getExe nodejs_latest} mondo.mjs "$file" "$2"
+      '';
+
+      devShells.sonic-pi = mkShellNoCC {
         packages = [
-          pkgs.sonic-pi
-          sonic-pi-tool.packages.${system}.default
+          sonic-pi
+          inputs.sonic-pi-tool.packages.${system}.default
         ];
       };
     });
