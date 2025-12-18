@@ -1,57 +1,86 @@
 import fs from 'node:fs';
-import wav from 'node-wav';
+import webAudio from 'node-web-audio-api';
+import wavEncode from 'audiobuffer-to-wav';
 
 import * as core from '@strudel/core';
 import { mondo } from '@strudel/mondo';
-import { Dough } from 'supradough';
-import {
-  getAudioContext,
-  doughsamples,
-  webaudioRepl,
-} from '@strudel/webaudio';
+import { doughsamples } from '@strudel/webaudio';
+import { getAudioContext } from 'superdough';
+import { workletUrl } from 'supradough';
 
 const file = process.argv[2];
 const code = fs.readFileSync(file, 'utf8');
 const duration = +process.argv[3];
 
-await core.evalScope(core, core.registerControl('markcss'), {
-  samples: url => pure({ promise: doughsamples(url.__pure) }),
+await core.evalScope(core, webAudio, {
+  samples: url => pure({
+    fetch: () => doughsamples(url.__pure),
+  }),
 });
 
+registerControl('markcss');
+
 let pat = mondo(code);
-await Promise.all(pat.firstCycleValues.map(v => v.promise));
-pat = pat.filterValues(v => !v.promise);
+await Promise.all(pat.firstCycleValues.map(v => v.fetch?.()));
+pat = pat.filterValues(v => !v.fetch);
 
 if (duration) {
-  const dough = new Dough();
+  AudioContext = class extends OfflineAudioContext {
+    constructor(sampleRate = 48000) {
+      super(2, sampleRate * (duration + 1), sampleRate);
+    }
+  };
+}
 
-  for (const hap of pat.queryArc(0, duration)) {
-    hap.value._begin = hap.whole.begin;
-    hap.value._duration = hap.duration;
-    dough.scheduleSpawn(hap.value);
-  }
+const audioCtx = getAudioContext();
 
-  const data = [
-    new Float32Array(dough.sampleRate * duration),
-    new Float32Array(dough.sampleRate * duration),
-  ];
+let doughWorklet = `import('${workletUrl}')`;
 
-  while (dough.t < data[0].length) {
-    dough.update();
-    data[0][dough.t - 1] = dough.out[0];
-    data[1][dough.t - 1] = dough.out[1];
-  }
+if (duration) {
+  doughWorklet += `
+    import { workerData } from 'node:worker_threads';
 
-  const buf = wav.encode(data, dough);
-  fs.writeFileSync(`${file}.wav`, buf);
+    import nativeAudio from '${
+      import.meta.resolve('node-web-audio-api')
+    }/../load-native.cjs';
+
+    const wrapped = registerProcessor;
+
+    registerProcessor = (name, Processor) =>
+      wrapped(name, class extends Processor {
+        process(...args) {
+          if (super.process(...args) && this.dough.t >= ${audioCtx.length}) {
+            nativeAudio.exit_audio_worklet_global_scope(workerData.workletId);
+          }
+        }
+      });
+  `;
+}
+
+const doughWorkletUrl = URL.createObjectURL(new Blob([doughWorklet]));
+await audioCtx.audioWorklet.addModule(doughWorkletUrl);
+URL.revokeObjectURL(doughWorkletUrl);
+
+const repl = core.repl({
+  getTime: () => repl.scheduler.lastTick,
+});
+
+console.log();
+repl.setCps(1);
+repl.setPattern(pat.supradough());
+
+if (duration) {
+  repl.scheduler.clock.setDuration(() => duration);
+  await new Promise(r => setTimeout(r, 1000));
+  repl.stop();
+
+  console.log(`\nRendering to ${file}.wav...`);
+  const buf = await audioCtx.startRendering();
+  const wav = Buffer.from(wavEncode(buf));
+  fs.writeFileSync(`${file}.wav`, wav);
 }
 
 else {
-  await evalScope(import('node-web-audio-api'));
-  await getAudioContext().audioWorklet
-    .addModule('supradough/dough-worklet.mjs');
-
-  const repl = webaudioRepl();
-  repl.setCps(1);
-  repl.setPattern(pat.supradough());
+  await context.suspend();
+  setTimeout(() => context.resume(), 1000);
 }
