@@ -1,21 +1,25 @@
 import fs from 'node:fs';
+import { styleText } from 'node:util';
+import { scheduler } from 'node:timers/promises';
+
 import webAudio from 'node-web-audio-api';
 import wavEncode from 'audiobuffer-to-wav';
 
 import * as core from '@strudel/core';
+import * as tonal from '@strudel/tonal';
 import { mondo } from '@strudel/mondo';
 import { doughsamples } from '@strudel/webaudio';
-import { getAudioContext } from 'superdough';
+import { setAudioContext, getAudioContext } from 'superdough';
 import { workletUrl } from 'supradough';
 
 const src = process.argv[2];
 const code = fs.readFileSync(src, 'utf8');
 const out = process.argv[3];
 
-await core.evalScope(core, webAudio, {
-  samples: url => pure({
-    fetch: () => doughsamples(url.__pure),
-  }),
+await core.evalScope(core, tonal, webAudio, { window: globalThis });
+
+strudelScope.samples = url => pure({
+  fetch: () => doughsamples(url.__pure),
 });
 
 registerControl('markcss');
@@ -25,7 +29,7 @@ await Promise.all(pat.firstCycleValues.map(v => v.fetch?.()));
 pat = pat.filterValues(v => !v.fetch);
 
 const repl = core.repl({
-  getTime: () => !out ? performance.now() / 1000 :
+  getTime: () => !out ? audioCtx.currentTime :
     repl.scheduler.clock.getPhase() - repl.scheduler.clock.minLatency,
 });
 
@@ -50,18 +54,32 @@ if (out) {
   await repl.setPattern(layeredPat);
 
   while (!duration) {
-    await new Promise(r => setTimeout(r, 1000));
+    await scheduler.wait(1000);
   }
 
   repl.stop();
   console.log(`\nRecording ${duration} seconds...`);
   repl.scheduler.clock.setDuration(() => duration / 10);
 
-  AudioContext = class extends OfflineAudioContext {
-    constructor(sampleRate = 48000) {
-      super(2, sampleRate * duration, sampleRate);
-    }
-  };
+  setAudioContext(new OfflineAudioContext(2, 48000 * duration, 48000));
+}
+
+else if (process.stderr.isTTY) {
+  const highlightCode = (str, loc) =>
+    str.slice(0, loc.start) +
+    styleText('green', str.slice(loc.start, loc.end)) +
+    str.slice(loc.end);
+
+  function printHighlightedCode(hap) {
+    const highlighted = hap.context.locations
+      .sort((a, b) => b.start - a.start)
+      .reduce(highlightCode, code);
+
+    console.clear();
+    console.warn(highlighted);
+  }
+
+  pat = pat.onTriggerTime(printHighlightedCode, false);
 }
 
 const audioCtx = getAudioContext();
@@ -96,11 +114,17 @@ URL.revokeObjectURL(doughWorkletUrl);
 await repl.setPattern(pat.supradough());
 
 if (out) {
-  await new Promise(r => setTimeout(r, 1000));
+  await scheduler.wait(1000);
   repl.stop();
 
   console.log(`\nRendering to ${out}...`);
   const buf = await audioCtx.startRendering();
   const wav = Buffer.from(wavEncode(buf));
   fs.writeFileSync(out, wav);
+}
+
+else {
+  await audioCtx.suspend();
+  await scheduler.wait(1000);
+  await audioCtx.resume();
 }
