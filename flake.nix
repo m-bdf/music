@@ -17,18 +17,20 @@
       packages.mondo = writeShellScriptBin "mondo" ''
         LD_LIBRARY_PATH+=:"${alsa-lib}/lib"
 
-        [[ -f $1 && $2 =~ ^[0-9]*$ && $# -lt 3 ]] || {
-          echo 'usage: mondo <file> [<duration>]' >&2
+        src=$(realpath -e "$1") &&
+        out=$(realpath "''${2-/.}") &&
+
+        [ $# -lt 3 ] || {
+          echo 'usage: mondo <src> [<out>]' >&2
           exit 1
         }
 
-        file=$(realpath "$1")
         cd "$(mktemp -d --tmpdir mondo-XXXXXX)"
         trap 'rm -rf $PWD' EXIT
-
         cp ${./mondo.mjs} mondo.mjs
+
         ${lib.getExe bun} install --analyze mondo.mjs --force
-        ${lib.getExe nodejs_latest} mondo.mjs "$file" "$2"
+        ${lib.getExe nodejs_latest} mondo.mjs "$src" "''${out%/}"
       '';
 
       devShells.sonic-pi = mkShellNoCC {

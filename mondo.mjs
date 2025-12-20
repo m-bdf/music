@@ -8,9 +8,9 @@ import { doughsamples } from '@strudel/webaudio';
 import { getAudioContext } from 'superdough';
 import { workletUrl } from 'supradough';
 
-const file = process.argv[2];
-const code = fs.readFileSync(file, 'utf8');
-const duration = +process.argv[3];
+const src = process.argv[2];
+const code = fs.readFileSync(src, 'utf8');
+const out = process.argv[3];
 
 await core.evalScope(core, webAudio, {
   samples: url => pure({
@@ -24,10 +24,42 @@ let pat = mondo(code);
 await Promise.all(pat.firstCycleValues.map(v => v.fetch?.()));
 pat = pat.filterValues(v => !v.fetch);
 
-if (duration) {
+const repl = core.repl({
+  getTime: () => !out ? performance.now() / 1000 :
+    repl.scheduler.clock.getPhase() - repl.scheduler.clock.minLatency,
+});
+
+repl.setCps(1);
+
+if (out) {
+  let duration;
+  const haps = [];
+
+  const layeredPat = pat.revv().stack(pat)
+    .onTrigger(hap => {
+      const n = haps.push(stringifyValues(hap.value));
+
+      if (n > layeredPat.firstCycle().length &&
+        haps.slice(n / 2).every((v, i) => v === haps[i])
+      ) {
+        duration = hap.endClipped / 2;
+      }
+    });
+
+  console.log('\nFinding track duration...');
+  await repl.setPattern(layeredPat);
+
+  while (!duration) {
+    await new Promise(r => setTimeout(r, 1000));
+  }
+
+  repl.stop();
+  console.log(`\nRecording ${duration} seconds...`);
+  repl.scheduler.clock.setDuration(() => duration / 10);
+
   AudioContext = class extends OfflineAudioContext {
     constructor(sampleRate = 48000) {
-      super(2, sampleRate * (duration + 1), sampleRate);
+      super(2, sampleRate * duration, sampleRate);
     }
   };
 }
@@ -36,7 +68,7 @@ const audioCtx = getAudioContext();
 
 let doughWorklet = `import('${workletUrl}')`;
 
-if (duration) {
+if (out) {
   doughWorklet += `
     import { workerData } from 'node:worker_threads';
 
@@ -61,26 +93,14 @@ const doughWorkletUrl = URL.createObjectURL(new Blob([doughWorklet]));
 await audioCtx.audioWorklet.addModule(doughWorkletUrl);
 URL.revokeObjectURL(doughWorkletUrl);
 
-const repl = core.repl({
-  getTime: () => repl.scheduler.lastTick,
-});
+await repl.setPattern(pat.supradough());
 
-console.log();
-repl.setCps(1);
-repl.setPattern(pat.supradough());
-
-if (duration) {
-  repl.scheduler.clock.setDuration(() => duration);
+if (out) {
   await new Promise(r => setTimeout(r, 1000));
   repl.stop();
 
-  console.log(`\nRendering to ${file}.wav...`);
+  console.log(`\nRendering to ${out}...`);
   const buf = await audioCtx.startRendering();
   const wav = Buffer.from(wavEncode(buf));
-  fs.writeFileSync(`${file}.wav`, wav);
-}
-
-else {
-  await context.suspend();
-  setTimeout(() => context.resume(), 1000);
+  fs.writeFileSync(out, wav);
 }
