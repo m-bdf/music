@@ -1,0 +1,54 @@
+$ def kick (
+  $ note [a1 ~] * 4 # sound 'sin'
+  # release .1 # penv 24 # pdecay .1
+  # hpf 48 # hpq [12 0] * 2
+  # hpenv -1 # hpattack .1 # hprelease .1
+  # duck 2 # duckonset .1 # duckattack .1
+)
+
+
+$ def melody <
+  [a2@3 e2 a2@2 e3@2 c3 d3@2 b2@3 g2@2]
+  [a2@2 e3 c3@3 d3@2 b2@2 g2 a2@2 b2@3]
+>
+
+$ def bass (
+  $ note a2
+  # sound ['sin', 'tri'] # fm (itri2 # mul 2)
+  # attack .01 # decay .24
+  # lpf 3600 # lpq (itri # mul 12) # lpattack 1
+  # orbit 2
+)
+
+
+$ def accents [~ 1 ~@4 1 ~] + <0 .1>
+
+$ note accents # ply [~ 4 4] / 4 # gain 0
+# duck 2 # duckonset .02 # duckattack .02
+
+
+$ def vows (
+  $ note [~@3 a4]
+  # sound 'supersaw' # vowel u
+  # attack .1 # decay 1 # release .25
+  # penv 24 # pattack .1 # prelease .25
+  # room 1
+)
+
+
+$ def hats (
+  $ noise [~ <1!3 [1 .25 # palindrome]>] * 4
+  # hpf 2400 # hpenv [4 2] * <1!3 2> # hpattack .1
+  # lpf 4800 # lpenv [0 1] * <1!3 2>
+)
+
+
+$ early 0 {
+  $ kick # gain <~@2 .6!12 ~@2>
+  $ bass # gain <~@8 .7!7 ~>
+         # struct [~ 1!3] * 4 # octave -1
+  $ bass # gain <.8!4 .6!12> # hpf 360 # room .5
+         # when <1!4 0!12> (# struct accents)
+  $ vows # gain <~ .2 ~@5 .2 ~@7 .2> - .2
+  $ hats # gain <~@4 .2!4 ~@4 .2!4> - .2
+}
